@@ -1,0 +1,175 @@
+## Полное решение для приложения «Training Planner»
+
+
+### Шаг 1. Код приложения (Python + Tkinter)
+
+```python
+import tkinter as tk
+from tkinter import ttk, messagebox
+import json
+import os
+from datetime import datetime
+
+class TrainingPlanner:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Training Planner")
+        self.trainings = []
+        self.load_data()
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Форма добавления тренировки
+        form_frame = ttk.LabelFrame(self.root, text="Добавить тренировку")
+        form_frame.pack(padx=10, pady=10, fill="x")
+
+        # Поле даты
+        tk.Label(form_frame, text="Дата (YYYY-MM-DD):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.date_entry = tk.Entry(form_frame)
+        self.date_entry.grid(row=0, column=1, padx=5, pady=5)
+
+        # Тип тренировки
+        tk.Label(form_frame, text="Тип тренировки:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.type_var = tk.StringVar()
+        training_types = ["Кардио", "Силовая", "Йога", "Плавание", "Бег", "Велоспорт", "Функциональная"]
+        self.type_combo = ttk.Combobox(form_frame, textvariable=self.type_var, values=training_types, state="readonly")
+        self.type_combo.grid(row=1, column=1, padx=5, pady=5)
+
+        # Длительность
+        tk.Label(form_frame, text="Длительность (мин):").grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        self.duration_entry = tk.Entry(form_frame)
+        self.duration_entry.grid(row=2, column=1, padx=5, pady=5)
+
+        # Кнопка добавления
+        tk.Button(form_frame, text="Добавить тренировку", command=self.add_training).grid(row=3, column=0, columnspan=2, pady=10)
+
+        # Фильтры
+        filter_frame = ttk.LabelFrame(self.root, text="Фильтры")
+        filter_frame.pack(padx=10, pady=5, fill="x")
+
+        # Фильтр по типу
+        tk.Label(filter_frame, text="Тип:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.filter_type_var = tk.StringVar(value="Все")
+        filter_types = ["Все"] + training_types
+        self.filter_type_combo = ttk.Combobox(filter_frame, textvariable=self.filter_type_var, values=filter_types, state="readonly")
+        self.filter_type_combo.grid(row=0, column=1, padx=5, pady=5)
+
+        # Фильтр по дате
+        tk.Label(filter_frame, text="Дата (YYYY-MM-DD):").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.filter_date_entry = tk.Entry(filter_frame)
+        self.filter_date_entry.grid(row=1, column=1, padx=5, pady=5)
+
+        # Кнопки фильтров
+        tk.Button(filter_frame, text="Применить фильтры", command=self.apply_filters).grid(row=2, column=0, pady=10)
+        tk.Button(filter_frame, text="Сбросить фильтры", command=self.reset_filters).grid(row=2, column=1, pady=10)
+
+        # Таблица тренировок
+        table_frame = ttk.LabelFrame(self.root, text="История тренировок")
+        table_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        self.training_tree = ttk.Treeview(table_frame, columns=("Date", "Type", "Duration", "Total"), show="headings")
+        self.training_tree.heading("Date", text="Дата")
+        self.training_tree.heading("Type", text="Тип")
+        self.training_tree.heading("Duration", text="Длительность (мин)")
+        self.training_tree.heading("Total", text="Общее время (мин)")
+        self.training_tree.column("Date", width=120)
+        self.training_tree.column("Type", width=100)
+        self.training_tree.column("Duration", width=120)
+        self.training_tree.column("Total", width=120)
+        self.training_tree.pack(fill="both", expand=True, padx=5, pady=5)
+
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.training_tree.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.training_tree.configure(yscrollcommand=scrollbar.set)
+
+        self.update_display()
+
+    def validate_input(self):
+        # Проверка даты
+        try:
+            date = datetime.strptime(self.date_entry.get(), "%Y-%m-%d")
+        except ValueError:
+            messagebox.showerror("Ошибка", "Неверный формат даты. Используйте YYYY-MM-DD")
+            return False
+
+        # Проверка длительности
+        try:
+            duration = float(self.duration_entry.get())
+            if duration <= 0:
+                messagebox.showerror("Ошибка", "Длительность должна быть положительным числом")
+                return False
+        except ValueError:
+            messagebox.showerror("Ошибка", "Длительность должна быть числом")
+            return False
+
+        # Проверка типа тренировки
+        if not self.type_var.get():
+            messagebox.showerror("Ошибка", "Выберите тип тренировки")
+            return False
+
+        return True
+
+    def add_training(self):
+        try:
+            if not self.validate_input():
+                return
+
+            training = {
+                "date": self.date_entry.get(),
+                "type": self.type_var.get(),
+                "duration": float(self.duration_entry.get())
+            }
+            self.trainings.append(training)
+            self.save_data()
+            self.update_display()
+            self.clear_form()
+            messagebox.showinfo("Успех", "Тренировка добавлена!")
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Произошла ошибка при добавлении тренировки: {str(e)}")
+
+    def clear_form(self):
+        self.date_entry.delete(0, tk.END)
+        self.type_var.set("")
+        self.duration_entry.delete(0, tk.END)
+
+    def update_display(self):
+        try:
+            for item in self.training_tree.get_children():
+                self.training_tree.delete(item)
+
+            filtered_trainings = self.apply_filter_to_data()
+
+
+            total_duration = 0
+            for training in filtered_trainings:
+                total_duration += training["duration"]
+                self.training_tree.insert("", "end", values=(
+                    training["date"],
+            training["type"],
+            f"{training['duration']:.0f}",
+            f"{total_duration:.0f}"
+        ))
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка отображения данных: {str(e)}")
+
+    def apply_filter_to_data(self):
+        filtered = self.trainings
+
+        # Фильтр по типу
+        filter_type = self.filter_type_var.get()
+        if filter_type != "Все":
+            filtered = [t for t in filtered if t["type"] == filter_type]
+
+        # Фильтр по дате
+        filter_date = self.filter_date_entry.get().strip()
+        if filter_date:
+            filtered = [t for t in filtered if t["date"] == filter_date]
+
+        return filtered
+
+    def apply_filters(self):
+        self.update_display()
+
+    def reset_filters(self):
+        self.filter_type_var.set("Все")
+        self.
