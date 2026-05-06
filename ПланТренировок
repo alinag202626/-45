@@ -53,7 +53,6 @@ class TrainingPlanner:
         self.filter_date_entry = tk.Entry(filter_frame)
         self.filter_date_entry.grid(row=1, column=1, padx=5, pady=5)
 
-
         # Кнопки фильтров
         tk.Button(filter_frame, text="Применить фильтры", command=self.apply_filters).grid(row=2, column=0, pady=10)
         tk.Button(filter_frame, text="Сбросить фильтры", command=self.reset_filters).grid(row=2, column=1, pady=10)
@@ -73,9 +72,11 @@ class TrainingPlanner:
         self.training_tree.column("Total", width=120)
         self.training_tree.pack(fill="both", expand=True, padx=5, pady=5)
 
+
         scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.training_tree.yview)
         scrollbar.pack(side="right", fill="y")
         self.training_tree.configure(yscrollcommand=scrollbar.set)
+
 
         self.update_display()
 
@@ -166,4 +167,4 @@ class TrainingPlanner:
 
     def reset_filters(self):
         self.filter_type_var.set("Все")
-        self.filter_date_entry.
+        self.filter_date_
